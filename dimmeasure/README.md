@@ -3,7 +3,7 @@
 Measuring a box without actually having a physical contact? Yes!
 Handling `.ply` files — 3D **point clouds** , measuring to find their dimensions and volume.
 
-- **.PLY**: Polygon File Format, often used for storing 3D point cloud geometry.
+- **.ply**: Polygon File Format, often used for storing 3D point cloud geometry.
 - **Point Cloud**: Essentially the simplest form of a 3d model. It is a collection of individual points plotted in a 3d space each point contains several measurements including its coordinate along X, Y, Z directions, RGB (color value) and luminance (brightness).
 
 ## Understanding the Raw Data
@@ -18,22 +18,15 @@ So what is the above graphs?
 
 From this, we can **spot the parcel’s footprint** and guess its height range.
 
-## Problem Statement
-Given: `.ply` files representing a table [or AGV] + parcel
-The dataset includes representative photos showing:
+## Problem Statemen
+Given: The dataset includes representative photos showing:
+- Variation in parcel sizes
+- Common shapes and surface textures
+- Reflective or glossy packaging materials
+- Color variations and potential overhangs or deformations
+- Real-world placement on AGV top surfaces
 
-    Variation in parcel sizes
-    Common shapes and surface textures
-    Reflective or glossy packaging materials
-    Color variations and potential overhangs or deformations
-    Real-world placement on AGV top surfaces
 
-- Remove background (table, noise)
-- Isolate the parcel
-- Compute:
-  - Length × Width × Height
-  - Bounding box volume (mm³ + cm³)
-- Output results in both **mm** and **cm³**, matching an external dimension sheet format.
 ## Challenges Faced
 1. **Data Scale Issues**  
    - Raw point clouds were in **meters**, but our measurements were in **millimeters**.  
