@@ -19,7 +19,15 @@ So what is the above graphs?
 From this, we can **spot the parcel’s footprint** and guess its height range.
 
 ## Problem Statement
-Given: `.ply` files representing a table [or AGV] + parcel and needed to:
+Given: `.ply` files representing a table [or AGV] + parcel
+The dataset includes representative photos showing:
+
+    Variation in parcel sizes
+    Common shapes and surface textures
+    Reflective or glossy packaging materials
+    Color variations and potential overhangs or deformations
+    Real-world placement on AGV top surfaces
+
 - Remove background (table, noise)
 - Isolate the parcel
 - Compute:
