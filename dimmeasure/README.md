@@ -1,4 +1,9 @@
+<<<<<<< HEAD
 # Parcel Dimension Measurement from PCD
+=======
+# Parcel Dimension Measurement – Status Update
+
+>>>>>>> 629617d (Initial parcel measurement pipeline with OBB, refined box, and true volume calculation. Added README with current status, known issues, and next steps.)
 ## Overview
 Measuring a box without actually having a physical contact? Yes!
 Handling `.ply` files — 3D **point clouds** , measuring to find their dimensions and volume.
@@ -6,16 +11,16 @@ Handling `.ply` files — 3D **point clouds** , measuring to find their dimensio
 - **.ply**: Polygon File Format, often used for storing 3D point cloud geometry.
 - **Point Cloud**: Essentially the simplest form of a 3d model. It is a collection of individual points plotted in a 3d space each point contains several measurements including its coordinate along X, Y, Z directions, RGB (color value) and luminance (brightness).
 
+<<<<<<< HEAD
 ## Understanding the Raw Data
-<p align="center">
-  <img width="500" height="500" alt="pcl1" src="https://github.com/user-attachments/assets/1eff8dff-2a87-423d-903b-78d9c6ca88e8" alt="Point Cloud PCS Analysis" />
-</p>
 
 So what is the above graph say? From this, we can **spot the parcel’s footprint** and guess its height range.
 1. **Z distribution** — how points are spread along the scanner's vertical axis.
 2. **PCA height plot** — same data but aligned to the table plane using PCA (red line = estimated table height).
 3. **Top-down view** — X–Y plane colored by height above the table (yellow = top surfaces, purple = low).
 
+=======
+>>>>>>> 629617d (Initial parcel measurement pipeline with OBB, refined box, and true volume calculation. Added README with current status, known issues, and next steps.)
 ## Problem Statement
 Given: The dataset includes representative photos showing:
 - Variation in parcel sizes
@@ -33,10 +38,26 @@ Given: The dataset includes representative photos showing:
 - Image with embossed measurements
 - Box Volume and True Volume.
 
+<<<<<<< HEAD
 ## Challenges Faced
 1. **Data Scale Issues**  
    - Raw point clouds were in **meters**, but our measurements were in **millimeters**.  
    - **Solution**: Added an automatic scaling check in `load_and_scale_mm()`.
+=======
+## Understanding the Raw Data
+<p align="center">
+    <img src="/home/dev/Pictures/Screenshots/plc1.png" alt="Point cloud PCS Analysis" width="500" height="500">
+</p>
+So what is the above graph say? From this, we can **spot the parcel’s footprint** and guess its height range.
+1. **Z distribution** — how points are spread along the scanner's vertical axis.
+2. **PCA height plot** — same data but aligned to the table plane using PCA (red line = estimated table height).
+3. **Top-down view** — X–Y plane colored by height above the table (yellow = top surfaces, purple = low).
+
+## Challenges Faced
+1. **Data Scale Issues**  
+   - Raw point clouds were in **meters**, but my measurements were in **millimeters**.  
+   - **Solution**: Added an automatic scaling check
+>>>>>>> 629617d (Initial parcel measurement pipeline with OBB, refined box, and true volume calculation. Added README with current status, known issues, and next steps.)
 
 2. **Parcel Lost During Filtering**  
    - Certain `delta` height thresholds returned zero points.  
@@ -45,6 +66,7 @@ Given: The dataset includes representative photos showing:
 3. **DBSCAN Not Detecting Parcel Cluster**  
    - Parameter sensitivity caused no clusters to be detected.  
    - **Solution**: Adjusted `eps_xy_mm`, `min_pts`, and added **Z-weighting** for better XY clustering.
+<<<<<<< HEAD
   
 ## Expected vs Current Results
 
@@ -62,3 +84,19 @@ Given: The dataset includes representative photos showing:
 - Fine-tune DBSCAN parameters per parcel
 - Implement table-plane subtraction for better accuracy
 - Automate batch processing + CSV export
+=======
+
+## Current Status
+
+**Implemented so far**  
+- `load_and_scale_mm()` – Loads `.ply` and scales to millimeters.  
+- `isolate_parcel()` – DBSCAN-based isolation of the parcel from background.  
+- Basic **Oriented Bounding Box (OBB)** measurement.  
+- **Refined bounding box** after top/bottom trimming.  
+- **Convex hull true volume** calculation.  
+- Saving debug `.ply` outputs for visualization.  
+- JSON output with measured dimensions & classification.
+
+**Work in progress / Issues**  
+- Measurements differ sign
+>>>>>>> 629617d (Initial parcel measurement pipeline with OBB, refined box, and true volume calculation. Added README with current status, known issues, and next steps.)
