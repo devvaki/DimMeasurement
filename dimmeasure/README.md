@@ -7,8 +7,8 @@ Handling `.ply` files — 3D **point clouds** , measuring to find their dimensio
 - **.ply**: Polygon File Format, often used for storing 3D point cloud geometry.
 - **Point Cloud**: Essentially the simplest form of a 3d model. It is a collection of individual points plotted in a 3d space each point contains several measurements including its coordinate along X, Y, Z directions, RGB (color value) and luminance (brightness).
 
-## Problem Statement
-Given: The dataset includes representative photos showing:
+## Given
+The dataset includes representative photos showing:
 - Variation in parcel sizes
 - Common shapes and surface textures
 - Reflective or glossy packaging materials
@@ -25,13 +25,15 @@ Given: The dataset includes representative photos showing:
 - Box Volume and True Volume.
 
 ## Understanding the Raw Data
-<div>
-   <img src="plc1.png" title="Point Cloud PCS Analysis" width="500" height="500">
+
+<div align="center">
+  <img src="pcl1.png" title="Point Cloud PCS Analysis" width="500" height="500">
 </div>
+
 So what is the above graph say? From this, we can **spot the parcel’s footprint** and guess its height range.
-1. **Z distribution** — how points are spread along the scanner's vertical axis.
-2. **PCA height plot** — same data but aligned to the table plane using PCA (red line = estimated table height).
-3. **Top-down view** — X–Y plane colored by height above the table (yellow = top surfaces, purple = low).
+- **Z distribution** — how points are spread along the scanner's vertical axis.
+- **PCA height plot** — same data but aligned to the table plane using PCA (red line = estimated table height).
+- **Top-down view** — X–Y plane colored by height above the table (yellow = top surfaces, purple = low).
 
 ## Challenges Faced
 1. **Data Scale Issues**  
