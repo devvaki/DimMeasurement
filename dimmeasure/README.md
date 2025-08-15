@@ -8,7 +8,7 @@ Handling `.ply` files — 3D **point clouds** , measuring to find their dimensio
 
 ## Understanding the Raw Data
 <p align="center">
-  <img width="650" height="650" alt="pcl1" src="https://github.com/user-attachments/assets/1eff8dff-2a87-423d-903b-78d9c6ca88e8" alt="Point Cloud PCS Analysis" />
+  <img width="500" height="500" alt="pcl1" src="https://github.com/user-attachments/assets/1eff8dff-2a87-423d-903b-78d9c6ca88e8" alt="Point Cloud PCS Analysis" />
 </p>
 
 So what is the above graph say? From this, we can **spot the parcel’s footprint** and guess its height range.
@@ -58,3 +58,7 @@ Given: The dataset includes representative photos showing:
 |------|---------------------------|------------------------|
 | 3163484-rgba.png | 68.1×59.5×15.0 | 60940.702 |
 
+## Next Steps:
+- Fine-tune DBSCAN parameters per parcel
+- Implement table-plane subtraction for better accuracy
+- Automate batch processing + CSV export
