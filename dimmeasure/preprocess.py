@@ -1,89 +1,81 @@
 import numpy as np
 import open3d as o3d
 
-# ---- Step 1: Denoise ----
-def denoise(pcd: o3d.geometry.PointCloud,
-            nb_neighbors: int = 30,
-            std_ratio: float = 1.5) -> o3d.geometry.PointCloud:
-    """
-    Statistical outlier removal (assumes coordinates are in millimeters).
-    """
-    clean, _ = pcd.remove_statistical_outlier(
-        nb_neighbors=nb_neighbors, std_ratio=std_ratio
-    )
-    return clean
+def load_and_scale_mm(ply_path):
+    #loading a ply file and ensure coord are in mm
+    pcd = o3d.io.read_point_cloud(str(ply_path))
+    P = np.asarray(pcd.points)
+    P = P[np.isfinite(P).all(axis=1)] #remove NaN/Inf
 
-# ---- Step 2: Plane → crop above → cluster → pick parcel ----
-def segment_plane_and_crop_above(
-    pcd_mm: o3d.geometry.PointCloud,
-    delta_mm: float = 6.0,
-    voxel_mm: float = 3.0,
-) -> o3d.geometry.PointCloud:
-    """
-    Isolate the parcel from the AGV/table.
+    span = float(np.max(np.ptp(P, axis=0)))
 
-    1) Fit plane in **millimeters**.
-    2) Keep points above plane by delta_mm.
-    3) DBSCAN cluster and choose the cluster with the greatest height over plane,
-       while rejecting very flat/huge rims.
-    4) Voxel downsample (mm).
-    """
-    if pcd_mm.is_empty():
-        return pcd_mm
+    #if data is in m -> mm
+    if 1.0 <= span <= 20.0:  # assume meters, convert to mm
+        P *= 1000.0
+    return o3d.geometry.PointCloud(o3d.utility.Vector3dVector(P))
 
-    # --- Plane segmentation in mm ---
-    plane_model, inliers = pcd_mm.segment_plane(
-        distance_threshold=1.5,  # ~1.5 mm tolerance
-        ransac_n=3,
-        num_iterations=2000
-    )
-    a, b, c, d = plane_model
-    n = np.array([a, b, c], dtype=float)
-    n /= (np.linalg.norm(n) + 1e-12)
+#estimate vertical axis using PCA and return heights above table/slab
+def pca_height(P):
+    Pc = P - P.mean(axis=0, keepdims=True)
+    _, _, Vt = np.linalg.svd(Pc, full_matrices=False)
+    n = Vt[-1] / (np.linalg.norm(Vt[-1]) + 1e-12) #vertical unit vector
+    h = P @ n
+    h0 = float(np.percentile(h, 5)) #table height level
+    return n, h, h0
 
-    pts = np.asarray(pcd_mm.points)
-    signed = (pts @ n + d)  # + above plane, in mm
+def isolate_parcel(pcd_mm,
+                   delta_low=10.0, delta_high=300.0,
+                   voxel_mm=3.0,
+                   eps_xy_mm=30.0, min_pts=60,
+                   z_weight=0.15, top_frac=0.20):
+    
 
-    # --- Crop: keep only points at least delta_mm above plane ---
-    keep_idx = np.where(signed > float(delta_mm))[0]
-    if keep_idx.size == 0:
-        return o3d.geometry.PointCloud()
-    crop = pcd_mm.select_by_index(keep_idx)
+    P = np.asarray(pcd_mm.points)
+    n, h, h0 = pca_height(P)
 
-    # --- Cluster in mm and pick the tallest valid cluster ---
-    labels = np.array(crop.cluster_dbscan(eps=8.0, min_points=30))  # eps ~ 8 mm
-    if labels.size > 0 and labels.max() >= 0:
-        crop_pts = np.asarray(crop.points)
-        crop_signed = (crop_pts @ n + d)
+    #1 height filter (above table)
+    mask = (h - h0 > delta_low) & (h - h0 < delta_high)
+    Pw = P[mask]
+    if Pw.size == 0:
+        return o3d.geometry.PointCloud(), {"note": "empty after height window"}
 
-        best_lab = None
-        best_height = -1.0
-        for lab in range(labels.max() + 1):
-            idx = np.where(labels == lab)[0]
-            if idx.size < 30:
+    cloud = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(Pw))
+    if voxel_mm:
+        cloud = cloud.voxel_down_sample(voxel_size=voxel_mm)
+    P1 = np.asarray(cloud.points)
+    if len(P1) < min_pts:
+        return cloud, {"note": "too few after voxel", "n": len(P1)}
+
+    #2 DBSCAN to get parcel footprint
+    Psc = P1.copy()
+    Psc[:, 2] *= z_weight
+    labs = np.array(o3d.geometry.PointCloud(o3d.utility.Vector3dVector(Psc))
+                    .cluster_dbscan(eps=eps_xy_mm, min_points=min_pts, print_progress=False))
+
+    if labs.max() >= 0:
+        h1 = P1 @ n
+        best, score = None, -1e9
+        for k in range(labs.max() + 1):
+            idx = np.where(labs == k)[0]
+            if idx.size < min_pts:
                 continue
+            pts = P1[idx]
+            med_h = float(np.median(h1[idx] - h0))
+            ex = np.ptp(pts[:, :2], axis=0)
+            area = float(ex[0] * ex[1])
+            sc = med_h - 0.0005 * area
+            if sc > score:
+                score, best = sc, idx
+        if best is not None:
+            return cloud.select_by_index(best), {"note": "dbscan_ok", "n": int(len(best))}
 
-            cluster = crop.select_by_index(idx)
-
-            # height above plane for this cluster (95th percentile is robust)
-            h95 = float(np.percentile(crop_signed[idx], 95))
-
-            # reject super-flat, huge-footprint rims
-            aabb = cluster.get_axis_aligned_bounding_box()
-            ex = aabb.get_extent()  # [ex, ey, ez] in mm
-            footprint_area = float(ex[0] * ex[1])  # mm^2
-            if ex.min() < 8.0 and footprint_area > (600.0 * 600.0):
-                continue
-
-            if h95 > best_height:
-                best_height = h95
-                best_lab = lab
-
-        if best_lab is not None:
-            crop = crop.select_by_index(np.where(labels == best_lab)[0])
-
-    # --- Voxel downsample for stability/perf ---
-    if voxel_mm and voxel_mm > 0:
-        crop = crop.voxel_down_sample(voxel_size=float(voxel_mm))
-
-    return crop
+    #3 fallback to top height band
+    h1 = P1 @ n
+    cutoff = np.percentile(h1 - h0, 100 * (1.0 - top_frac))
+    keep = np.where((h1 - h0) >= cutoff)[0]
+    if keep.size == 0:
+        return o3d.geometry.PointCloud(), {"note": "fallback_empty"}
+    pc = cloud.select_by_index(keep)
+    if voxel_mm:
+        pc = pc.voxel_down_sample(voxel_size=voxel_mm)
+    return pc, {"note": "fallback_top_band", "n": int(len(pc.points))}
