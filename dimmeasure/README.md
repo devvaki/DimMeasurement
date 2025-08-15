@@ -1,5 +1,5 @@
 # Parcel Dimension Measurement from PCD
-## Introduction
+## Overview
 Measuring a box without actually having a physical contact? Yes!
 Handling `.ply` files — 3D **point clouds** , measuring to find their dimensions and volume.
 
@@ -11,14 +11,12 @@ Handling `.ply` files — 3D **point clouds** , measuring to find their dimensio
   <img width="650" height="650" alt="pcl1" src="https://github.com/user-attachments/assets/1eff8dff-2a87-423d-903b-78d9c6ca88e8" alt="Point Cloud PCS Analysis" />
 </p>
 
-So what is the above graphs?
+So what is the above graph say? From this, we can **spot the parcel’s footprint** and guess its height range.
 1. **Z distribution** — how points are spread along the scanner's vertical axis.
 2. **PCA height plot** — same data but aligned to the table plane using PCA (red line = estimated table height).
 3. **Top-down view** — X–Y plane colored by height above the table (yellow = top surfaces, purple = low).
 
-From this, we can **spot the parcel’s footprint** and guess its height range.
-
-## Problem Statemen
+## Problem Statement
 Given: The dataset includes representative photos showing:
 - Variation in parcel sizes
 - Common shapes and surface textures
@@ -26,6 +24,14 @@ Given: The dataset includes representative photos showing:
 - Color variations and potential overhangs or deformations
 - Real-world placement on AGV top surfaces
 
+## Data to be delivered per parcel:
+- Length(mm)
+- Width (mm)
+- Height (mm)
+- Timestamp in millisecond
+- Parcel type (Box, polybag, etc.)
+- Image with embossed measurements
+- Box Volume and True Volume.
 
 ## Challenges Faced
 1. **Data Scale Issues**  
@@ -39,16 +45,16 @@ Given: The dataset includes representative photos showing:
 3. **DBSCAN Not Detecting Parcel Cluster**  
    - Parameter sensitivity caused no clusters to be detected.  
    - **Solution**: Adjusted `eps_xy_mm`, `min_pts`, and added **Z-weighting** for better XY clustering.
-
-4. **NumPy 2.0 Compatibility**  
-   - `.ptp()` method removal caused errors.  
-   - **Solution**: Replaced with `np.ptp()` calls.
   
-## Expected Output
-For each `.ply` file, we now get:
-- **Isolation Info**: Parcel found or fallback method used
-- **Dimensions in mm and cm**
-- **Bounding Box Volume in mm³ and cm³**
-- Debug `.ply` file of the isolated parcel
-- JSON row for comparison with ground truth
+## Expected vs Current Results
+
+**Expected Output** (sample from the sheet):
+| File | Expected Dimensions (cm) | Expected Volume (cm³) |
+|------|---------------------------|------------------------|
+| 3163484-rgba.png | 50×33×14.4 | 23760 |
+
+**Current Output**:
+| File | Measured Dimensions (cm) | Measured Volume (cm³) |
+|------|---------------------------|------------------------|
+| 3163484-rgba.png | 68.1×59.5×15.0 | 60940.702 |
 
