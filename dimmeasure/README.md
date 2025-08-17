@@ -1,11 +1,9 @@
 # Parcel Dimension Measurement – Status Update
 
 ## Overview
-Measuring a box without actually having a physical contact? Yes!
-Handling `.ply` files — 3D **point clouds** , measuring to find their dimensions and volume.
+Handling `.ply` files — 3D **point clouds** of a parcel placed on an AGV and measuring those parcel boxes to find their dimensions and volume.
 
-- **.ply**: Polygon File Format, often used for storing 3D point cloud geometry.
-- **Point Cloud**: Essentially the simplest form of a 3d model. It is a collection of individual points plotted in a 3d space each point contains several measurements including its coordinate along X, Y, Z directions, RGB (color value) and luminance (brightness).
+- **Point Cloud**: Essentially the simplest form of a 3d model. It is a collection of individual points plotted in a 3d space each point contains several measurements including its coordinate along **X, Y, Z directions, RGB (color value) and luminance (brightness).**
 
 ## Given
 The dataset includes representative photos showing:
@@ -27,7 +25,7 @@ The dataset includes representative photos showing:
 ## Understanding the Raw Data
 
 <div align="center">
-  <img src="pcl1.png" title="Point Cloud PCS Analysis" width="500" height="500">
+  <img src="pcl1.png" width="500" height="500">
 </div>
 
 So what is the above graph say? From this, we can **spot the parcel’s footprint** and guess its height range.
@@ -35,29 +33,70 @@ So what is the above graph say? From this, we can **spot the parcel’s footprin
 - **PCA height plot** — same data but aligned to the table plane using PCA (red line = estimated table height).
 - **Top-down view** — X–Y plane colored by height above the table (yellow = top surfaces, purple = low).
 
+## Current Progress (Stages 1–5)
+
+1. **Stage01 - stage01_load.py**
+   - Loads `.ply` point clouds
+   - Handles unit scaling (meters → mm)
+
+2. **Stage02 - stage02_sanitize.py**
+   - Removes NaN values
+   - Filters statistical outliers
+
+<div align="center">
+  <img src="1.png" width="800" height="400">
+</div>
+
+3. **Stage03 - stage03_plane.py**
+   - Detects ground plane using RANSAC
+   - Checks orientation against Z-axis (angle ~0.5–0.9° → nearly flat)
+
+4. **Stage04 - stage04_keep_above_plane.py**
+   - Keeps points above the plane in a height band `[h_min, h_max]`
+   - Ensures we focus only on parcel boxes as it should ;-;
+
+<div align="center">
+  <img src="4.png" width="800" height="400">
+</div>
+
+5. **Stage05 - stage05_cluster.py**
+   - DBSCAN clustering to isolate the parcel
+   - Largest cluster corresponds to the box (30–50% points retained)
+
+<div align="center">
+  <img src="5.png" width="800" height="400">
+</div>
+
 ## Challenges Faced
-1. **Data Scale Issues**  
-   - Raw point clouds were in **meters**, but our measurements were in **millimeters**.  
-   - **Solution**: Added an automatic scaling check in `load_and_scale_mm()`.
+- Initial span values were `NaN` → fixed by proper unit handling in Stage01.
+- Plane detection required tuning `--dist-mm` and `--iters` for stable results.
+- Above-plane filtering had to be balanced (`h_min`, `h_max`) to avoid grabbing background.
+- DBSCAN clustering was tricky — started with all noise, later tuned (`eps=25, min_pts=60`) to get stable largest cluster.
 
-2. **Parcel Lost During Filtering**  
-   - Certain `delta` height thresholds returned zero points.  
-   - **Solution**: Tuned `delta_low`/`delta_high` window and added a **fallback top-band filter**.
+### Technical Mistakes & Problems
 
-3. **DBSCAN Not Detecting Parcel Cluster**  
-   - Parameter sensitivity caused no clusters to be detected.  
-   - **Solution**: Adjusted `eps_xy_mm`, `min_pts`, and added **Z-weighting** for better XY clustering.
+## Why a Stage-Wise Pipeline?
 
-## Current Status
+Initially, mistakes and issues caused:
+- **Preprocess**: mixed cleaning + filtering. Outliers and NaN values weren’t separated cleanly → led to inconsistent spans.
+- **IO**: combined file I/O with processing logic → small bugs broke later steps.  
+- **Main**:   - Debugging was impossible since we couldn’t isolate which stage (sanitize, plane, cluster) was failing. Parameter tuning was trial-and-error without visibility at intermediate steps.
 
-**Implemented so far**  
-- `load_and_scale_mm()` – Loads `.ply` and scales to millimeters.  
-- `isolate_parcel()` – DBSCAN-based isolation of the parcel from background.  
-- Basic **Oriented Bounding Box (OBB)** measurement.  
-- **Refined bounding box** after top/bottom trimming.  
-- **Convex hull true volume** calculation.  
-- Saving debug `.ply` outputs for visualization.  
-- JSON output with measured dimensions & classification.
+So we switched to a **stage-by-stage pipeline**, where each step (load, sanitize, plane, filter, cluster) is isolated.  
+This makes debugging easier, parameters tunable, and results traceable at every stage.
 
-**Work in progress / Issues**  
-- Measurements differ sign
+- **Monolithic code**: Tried handling I/O, cleaning, plane detection, and clustering in one file → debugging became impossible.
+- **NaN span values**: Output showed `X=nan Y=nan Z=nan` until we separated loading (Stage01) from sanitization (Stage02).
+- **Over-aggressive filtering**: Removing outliers too early caused loss of parcel points → fixed by a dedicated sanitize stage.
+- **Plane misalignment**: Without an isolated plane detection step, results varied with background → added Stage03 with RANSAC tuning.
+- **Height band confusion**: Mixed logic for plane removal and height filtering → separated into Stage04 to control `[h_min, h_max]`.
+- **Clustering failures**: DBSCAN gave “0 clusters” when applied directly on raw data → resolved by making Stage05 only cluster points already above-plane.
+
+### Outcome
+Breaking the pipeline into **Stage01 → Stage05** allowed step-by-step debugging, parameter tuning, and reproducibility.  
+This modular approach makes it easier to identify problems at each step and refine without breaking the whole flow.
+
+## Next Steps (Milestone 2)
+- **Stage06**: Fit Oriented Bounding Box (OBB) on the largest cluster.
+- Extract Length, Width, Height.
+- Compare with ground-truth dimensions and tune the parameters to fit the dimensions near the accuracy rate.
